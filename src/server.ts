@@ -1,5 +1,6 @@
 import http from "node:http";
 import os from "node:os";
+import { getSystemReport } from "./services/system.js";
 
 const PORT = 4242;
 
@@ -28,6 +29,11 @@ const server = http.createServer((request, response) => {
       agentVersion: "0.1.0",
     });
 
+    return;
+  }
+
+  if (method === "GET" && url === "/api/v1/system") {
+    sendJson(response, 200, getSystemReport());
     return;
   }
 
