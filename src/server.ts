@@ -1,12 +1,33 @@
 import http from "node:http";
 import os from "node:os";
 import { getSystemReport } from "./services/system.js";
+import { deployConnorHub } from "./services/deploy-connorhub.js";
 
 const PORT = 4242;
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
   const method = request.method;
   const url = request.url;
+
+  if (method === "POST" && url === "/api/v1/actions/deploy-connorhub") {
+    try {
+      const result = await deployConnorHub();
+
+      sendJson(response, 200, result);
+    } catch (error) {
+      console.error("ConnorHub deployment failed:", error);
+
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "ConnorHub deployment failed.",
+      });
+    }
+
+    return;
+  }
 
   if (method === "GET" && url === "/api/v1/health") {
     sendJson(response, 200, {
