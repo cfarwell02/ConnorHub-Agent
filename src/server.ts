@@ -1,16 +1,223 @@
 import http from "node:http";
 import os from "node:os";
+import {
+  rebootServer,
+  restartConnorHub,
+  shutdownServer,
+} from "./services/server-actions.js";
+
 import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
 import { getConnorHubLogs } from "./services/connorhub-logs.js";
 import { getProjectStatuses } from "./services/project-status.js";
 import { refreshProjects } from "./services/project-refresh.js";
+import { openUrl } from "./services/open-url.js";
+import { openProject } from "./services/open-project.js";
+import { listProjects } from "./services/projects.js";
+import { copyToClipboard } from "./services/clipboard.js";
+import { sendNotification } from "./services/notification.js";
 
 const PORT = 4242;
 
 const server = http.createServer(async (request, response) => {
   const method = request.method;
   const url = request.url;
+
+  async function readJsonBody(request: http.IncomingMessage): Promise<unknown> {
+    const chunks: Buffer[] = [];
+
+    for await (const chunk of request) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    if (chunks.length === 0) {
+      return {};
+    }
+
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/restart-connorhub") {
+    try {
+      await restartConnorHub();
+
+      sendJson(response, 200, {
+        success: true,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error: error instanceof Error ? error.message : "Restart failed.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/reboot") {
+    sendJson(response, 202, {
+      success: true,
+      message: "Device reboot requested.",
+    });
+
+    void rebootServer();
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/shutdown") {
+    sendJson(response, 202, {
+      success: true,
+      message: "Device shutdown requested.",
+    });
+
+    void shutdownServer();
+
+    return;
+  }
+
+  if (method === "GET" && url === "/api/v1/projects") {
+    sendJson(response, 200, {
+      projects: listProjects(),
+    });
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/open-project") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("projectId" in body) ||
+        typeof body.projectId !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "projectId is required.",
+        });
+
+        return;
+      }
+
+      await openProject(body.projectId);
+
+      sendJson(response, 200, {
+        success: true,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Project could not be opened.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/open-url") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("url" in body) ||
+        typeof body.url !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "url is required.",
+        });
+
+        return;
+      }
+
+      await openUrl(body.url);
+
+      sendJson(response, 200, {
+        success: true,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "URL could not be opened.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/clipboard") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("text" in body) ||
+        typeof body.text !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "text is required.",
+        });
+
+        return;
+      }
+
+      await copyToClipboard(body.text);
+
+      sendJson(response, 200, {
+        success: true,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Clipboard action failed.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/notify") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("title" in body) ||
+        !("message" in body) ||
+        typeof body.title !== "string" ||
+        typeof body.message !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "title and message are required.",
+        });
+
+        return;
+      }
+
+      await sendNotification(body.title, body.message);
+
+      sendJson(response, 200, {
+        success: true,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error: error instanceof Error ? error.message : "Notification failed.",
+      });
+    }
+
+    return;
+  }
 
   if (method === "POST" && url === "/api/v1/projects/refresh") {
     try {
