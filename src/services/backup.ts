@@ -40,6 +40,10 @@ export async function createBackup(): Promise<BackupResult> {
     "-czf",
     backupPath,
 
+    "--exclude=._*",
+    "--exclude=.DS_Store",
+    "--exclude=~$*",
+
     ...BACKUP_PATHS.flatMap((backupPath) => [
       "-C",
       path.dirname(backupPath),
