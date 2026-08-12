@@ -4,12 +4,34 @@ import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
 import { getConnorHubLogs } from "./services/connorhub-logs.js";
 import { getProjectStatuses } from "./services/project-status.js";
+import { refreshProjects } from "./services/project-refresh.js";
 
 const PORT = 4242;
 
 const server = http.createServer(async (request, response) => {
   const method = request.method;
   const url = request.url;
+
+  if (method === "POST" && url === "/api/v1/projects/refresh") {
+    try {
+      const projects = await refreshProjects();
+
+      sendJson(response, 200, {
+        success: projects.every((project) => project.success),
+        projects,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to refresh projects.",
+      });
+    }
+
+    return;
+  }
 
   if (method === "GET" && url === "/api/v1/projects/status") {
     try {
