@@ -12,6 +12,8 @@ import {
   stopProject,
 } from "./services/project-runner.js";
 
+import { createBackup, listBackups } from "./services/backup.js";
+
 import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
 import { getConnorHubLogs } from "./services/connorhub-logs.js";
@@ -41,6 +43,43 @@ const server = http.createServer(async (request, response) => {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  }
+
+  if (method === "POST" && url === "/api/v1/actions/backup") {
+    try {
+      const backup = await createBackup();
+
+      sendJson(response, 201, {
+        success: true,
+        backup,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error: error instanceof Error ? error.message : "Backup failed.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "GET" && url === "/api/v1/backups") {
+    try {
+      const backups = await listBackups();
+
+      sendJson(response, 200, {
+        success: true,
+        backups,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to list backups.",
+      });
+    }
+
+    return;
   }
 
   if (method === "POST" && url === "/api/v1/projects/start") {
