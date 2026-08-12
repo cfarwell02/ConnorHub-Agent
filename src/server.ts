@@ -2,6 +2,7 @@ import http from "node:http";
 import os from "node:os";
 import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
+import { getConnorHubLogs } from "./services/connorhub-logs.js";
 
 const PORT = 4242;
 
@@ -23,6 +24,27 @@ const server = http.createServer(async (request, response) => {
           error instanceof Error
             ? error.message
             : "ConnorHub deployment failed.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "GET" && url === "/api/v1/logs/connorhub") {
+    try {
+      const logs = await getConnorHubLogs();
+
+      sendJson(response, 200, {
+        success: true,
+        logs,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to retrieve ConnorHub logs.",
       });
     }
 
