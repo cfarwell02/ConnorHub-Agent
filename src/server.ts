@@ -1,5 +1,7 @@
 import http from "node:http";
 import os from "node:os";
+import "dotenv/config";
+
 import {
   rebootServer,
   restartConnorHub,
@@ -11,6 +13,8 @@ import {
   startProject,
   stopProject,
 } from "./services/project-runner.js";
+
+import { isAuthorized } from "./services/auth.js";
 
 import { createBackup, listBackups } from "./services/backup.js";
 
@@ -43,6 +47,22 @@ const server = http.createServer(async (request, response) => {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  }
+
+  if (method === "GET" && url === "/api/v1/health") {
+    sendJson(response, 200, {
+      status: "ok",
+    });
+
+    return;
+  }
+
+  if (!isAuthorized(request.headers.authorization)) {
+    sendJson(response, 401, {
+      error: "Unauthorized",
+    });
+
+    return;
   }
 
   if (method === "POST" && url === "/api/v1/actions/backup") {
@@ -423,14 +443,6 @@ const server = http.createServer(async (request, response) => {
             : "Failed to retrieve ConnorHub logs.",
       });
     }
-
-    return;
-  }
-
-  if (method === "GET" && url === "/api/v1/health") {
-    sendJson(response, 200, {
-      status: "ok",
-    });
 
     return;
   }
