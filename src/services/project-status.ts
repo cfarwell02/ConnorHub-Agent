@@ -102,10 +102,6 @@ async function getTrackingStatus(projectPath: string): Promise<{
   behind: number;
 } | null> {
   try {
-    await execFileAsync("git", ["fetch", "--quiet"], {
-      cwd: projectPath,
-    });
-
     const { stdout } = await execFileAsync(
       "git",
       ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
