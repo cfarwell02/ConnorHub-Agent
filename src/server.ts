@@ -6,6 +6,12 @@ import {
   shutdownServer,
 } from "./services/server-actions.js";
 
+import {
+  getRunningProjects,
+  startProject,
+  stopProject,
+} from "./services/project-runner.js";
+
 import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
 import { getConnorHubLogs } from "./services/connorhub-logs.js";
@@ -35,6 +41,86 @@ const server = http.createServer(async (request, response) => {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  }
+
+  if (method === "POST" && url === "/api/v1/projects/start") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("projectId" in body) ||
+        typeof body.projectId !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "projectId is required.",
+        });
+
+        return;
+      }
+
+      const project = await startProject(body.projectId);
+
+      sendJson(response, 200, {
+        success: true,
+        project,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Project could not be started.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "POST" && url === "/api/v1/projects/stop") {
+    try {
+      const body = await readJsonBody(request);
+
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("projectId" in body) ||
+        typeof body.projectId !== "string"
+      ) {
+        sendJson(response, 400, {
+          error: "projectId is required.",
+        });
+
+        return;
+      }
+
+      const project = stopProject(body.projectId);
+
+      sendJson(response, 200, {
+        success: true,
+        project,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Project could not be stopped.",
+      });
+    }
+
+    return;
+  }
+
+  if (method === "GET" && url === "/api/v1/projects/running") {
+    sendJson(response, 200, {
+      projects: getRunningProjects(),
+    });
+
+    return;
   }
 
   if (method === "POST" && url === "/api/v1/actions/restart-connorhub") {
