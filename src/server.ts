@@ -3,12 +3,34 @@ import os from "node:os";
 import { getSystemReport } from "./services/system.js";
 import { deployConnorHub } from "./services/deploy-connorhub.js";
 import { getConnorHubLogs } from "./services/connorhub-logs.js";
+import { getProjectStatuses } from "./services/project-status.js";
 
 const PORT = 4242;
 
 const server = http.createServer(async (request, response) => {
   const method = request.method;
   const url = request.url;
+
+  if (method === "GET" && url === "/api/v1/projects/status") {
+    try {
+      const projects = await getProjectStatuses();
+
+      sendJson(response, 200, {
+        success: true,
+        projects,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to read project status.",
+      });
+    }
+
+    return;
+  }
 
   if (method === "POST" && url === "/api/v1/actions/deploy-connorhub") {
     try {
