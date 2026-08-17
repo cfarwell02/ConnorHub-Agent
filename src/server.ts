@@ -28,6 +28,7 @@ import { openProject } from "./services/open-project.js";
 import { listProjects } from "./services/projects.js";
 import { copyToClipboard } from "./services/clipboard.js";
 import { sendNotification } from "./services/notification.js";
+import { pullCleanProjects } from "./services/project-pull.js";
 
 const PORT = 4242;
 
@@ -47,6 +48,25 @@ const server = http.createServer(async (request, response) => {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  }
+
+  if (method === "POST" && url === "/api/v1/projects/pull-clean") {
+    try {
+      const projects = await pullCleanProjects();
+
+      sendJson(response, 200, {
+        success: projects.every((project) => project.status !== "failed"),
+        projects,
+      });
+    } catch (error) {
+      sendJson(response, 500, {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to pull projects.",
+      });
+    }
+
+    return;
   }
 
   if (method === "GET" && url === "/api/v1/health") {

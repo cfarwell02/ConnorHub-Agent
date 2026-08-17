@@ -2,6 +2,10 @@ type ProjectDefinition = {
   id: string;
   name: string;
   serverPath: string;
+  workspacePaths?: {
+    darwin?: string;
+    win32?: string;
+  };
   devCommand?: {
     command: string;
     args: string[];
@@ -10,9 +14,13 @@ type ProjectDefinition = {
 
 const PROJECTS: ProjectDefinition[] = [
   {
-    id: "connorhub",
-    name: "ConnorHub",
-    serverPath: "/srv/connorhub/Projects/ConnorHub/dashboard",
+    id: "sidequest",
+    name: "SideQuest",
+    serverPath: "/srv/connorhub/Projects/SideQuest",
+    workspacePaths: {
+      darwin: "/Volumes/ConnorHub/Projects/SideQuest",
+      win32: "Z:\\Projects\\SideQuest",
+    },
     devCommand: {
       command: "npm",
       args: ["run", "dev"],
@@ -57,4 +65,29 @@ export function listProjects() {
     id,
     name,
   }));
+}
+
+export function getServerProjectPath(projectId: string): string {
+  return getProjectDefinition(projectId).serverPath;
+}
+
+export function getWorkspaceProjectPath(projectId: string): string {
+  const project = getProjectDefinition(projectId);
+
+  const platform = process.platform;
+
+  const workspacePath =
+    platform === "darwin"
+      ? project.workspacePaths?.darwin
+      : platform === "win32"
+        ? project.workspacePaths?.win32
+        : undefined;
+
+  if (!workspacePath) {
+    throw new Error(
+      `${project.name} does not have a workspace path configured for this device.`,
+    );
+  }
+
+  return workspacePath;
 }
